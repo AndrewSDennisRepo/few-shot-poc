@@ -1,5 +1,3 @@
-
-
 import json
 
 import numpy as np
@@ -105,12 +103,10 @@ class Loader:
         '''
             Split the dataset according to the specified train_classes, val_classes
             and test_classes
-
             @param all_data: list of examples (dictionaries)
             @param train_classes: list of int
             @param val_classes: list of int
             @param test_classes: list of int
-
             @return train_data: list of examples
             @return val_data: list of examples
             @return test_data: list of examples
@@ -254,65 +250,70 @@ n_query = 5
 max_length = 75
 
 
-support, query, label = batch_maker(3, n_way, n_support, n_query, max_length, train['encoded'], train['label'])
+support, query, label = batch_maker(1, n_way, n_support, n_query, max_length, train['encoded'], train['label'])
 
 
-print(len(label))
-for i, v in enumerate(support['pos']):
-    print(i)
+from embedding import Embedder
+
+
+model = Embedder(r.word_vec_tot, 10)
+
+print('Support: ', support['pos'].shape)
+
+output = model(support['pos'])
+query1 = model(query['pos'])
+
+print('LAbel', label)
+
+print('Support Shape Embedding', output.shape)
+
+output = output.view(3, 5, 750)
+
+
+query1 = query1.view(15, 1, 750)
+
+# print(output.shape)
+print('Query Post Embedding', query1.shape)
+
+
+proto = torch.mean(output, 1)
+
+print('Proto: ', proto.shape)
+
+# batch * classes * support_n
+
+# proto = []
+# for i in range(3):
+#     proto.append(torch.mean(output[i * 5: (i + 1) * 5], dim=1))
+
+# proto = torch.cat(proto, dim=0)
+
+# # print(proto)
+# print('PROTO', proto.shape)
+# print('BEfore', query1.shape)
+
+# # query1 = query1.reshape(15, 75, 10)
+# print('after', query1.shape)
+
+# print('unsqueeze', proto.unsqueeze(0))
+# for i in query1:
+diff = torch.pow(proto.unsqueeze(1) - query1.unsqueeze(2), 2).sum(3)
+# print('Distance', diff)
 
 
 
-# print('Loading and encoding Data')
 
+# print('diff View', vi.shape)
+_, pred = torch.max(diff, 1)
 
-# print('extracting sample')
+print(pred)
 
-# sample = extract_sample(3, 5, 5, train['encoded'], train['label'])
+import torch.nn.functional as F
+import torch.nn as nn
 
-# print('Out Size: ', sample['support_text'].size())
+acc = torch.mean((pred == label).type(torch.FloatTensor))
+# pred = pred.reshape(1,15)
 
-# print('Labels!!!!')
-# # print(sample['labels'].reshape(15, 1))
-# # print(sample)
-# # query, support = np.hsplit(sample_text, 2)
+# loss =  nn.CrossEntropyLoss(pred, label)
 
-# from embedding import Embedding
-# from proto_network import Prototype
-
-
-# x = Embedding(r.word_vec_tot).forward(sample['support_text'])
-
-# print('Post Embeding', x.size())
-
-# pred = Prototype().forward(sample['support_text'], sample['query_text'], r.word_vec_tot)
-
-# print(pred)
-# print(pred.shape)
-
-# # print(log)
-# # print(log.shape)
-
-# # log = log.reshape(3 , 5, 5)
-
-# # print(log)
-# # target_inds = torch.arange(0, 3).view(3, 1, 1).expand(3, 5, 1).long()
-
-# # print(target_inds,)
-# # print(target_inds)
-# from torch import autograd, optim, nn
-
-
-# print('Loss......')
-# loss = nn.CrossEntropyLoss()
-
-# print(sample['labels'])
-# output = loss(pred, sample['labels'].reshape(3, 1))
-# output.backward()
-
-# print(loss_val)
-
-# print('-'*100)
-
-# print(pred.view(-1))
-# print(sample['labels'].view(-1))
+print(acc)
